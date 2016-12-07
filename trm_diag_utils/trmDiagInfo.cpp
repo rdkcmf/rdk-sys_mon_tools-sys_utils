@@ -68,10 +68,6 @@ using namespace TRM;
 #define TRM_DIAG_FAILURE 1
 #define DISABLE_DEBUG 1
 
-const char* validParams[] = {"--connectedDevicesNum", "--reservedTunersNum", "--connectedDevices", 
-                              "--reservedTuners", "--connectionErrors", "--connectionErrorsNum",
-                              "--numberOfTuners"};
-const int numberOfParams = 7 ;
 static int getDiagParameter(TRMMessageType_t type);
 static void processBuffer( const char* buf, int len);
 
@@ -89,36 +85,13 @@ static int maxTunerTokenLen = 26 ;
 
 
 
-void displayHelp() {
-     printf("Usage : QueryTRMInfo [CMD] \n");
-     printf("CMDs are \n" );
-     printf("%5s -> %s \n","--help", "print this help.");
-     printf("%5s -> %s \n","--connectedDevicesNum", "Get Number Of Connected Devices");
-     printf("%5s -> %s \n","--reservedTunersNum", "Get Number Of Reserved Tuners");
-     printf("%5s -> %s \n","--connectionErrorsNum", "Number Of TRM Errors");
-     printf("%5s -> %s \n","--connectedDevices", ", Separated list of connected device Ids");
-     printf("%5s -> %s \n","--reservedTuners", ", Separated list of tokenid's for reserved tuners");
-     printf("%5s -> %s \n","--connectionErrors", ", Separated list of connection errors");
-     printf("%5s -> %s \n","--numberOfTuners", "Number Of Tuners");
-
-}
-
-/**
-   Return the index of parameter to be retrived if valid.
-   If not valid return -1 and display the help screen
-**/
-int validateParams(const char* param) {
-    int paramIndex = -1 ;
-    for ( int i=0; i < numberOfParams; i++ ) {
-        if (strcmp(param, validParams[i]) == 0 ) {
-            paramIndex = i ;
-            break ;
-        }
-    }
-    return paramIndex;
-}
+static bool iarmBusInitialized = false;
 
 void iarmBusInit( void ) {
+    if(iarmBusInitialized == true)
+    {
+        return;
+    }
     FILE fp_old = *stdout;  // preserve the original stdout
     #ifdef DISABLE_DEBUG
     *stdout = *fopen("/dev/null","w");
@@ -127,6 +100,7 @@ void iarmBusInit( void ) {
     IARM_Bus_Init("getTRMDiagInfo");
     IARM_Bus_Connect();
     *stdout=fp_old;  // restore stdout
+    iarmBusInitialized = true;
 }
 
 void iarmBusDisconnect(void) {
@@ -139,85 +113,12 @@ void iarmBusDisconnect(void) {
     *stdout=fp_old;  // restore stdout
 }
 
-int main(int argc, char *argv[]) 
-{
-   char **listConnectedDevices = NULL; 
-   char **tunerReservationList = NULL; 
-   char **connectionErrorList = NULL; 
-   int  count = 0 ;
-   FILE fp_old = *stdout;  // preserve the original stdout
-   int paramIndex = 0;
-
-   if (argc != 2) {
-       displayHelp();
-       return -1;
-   }
-
-   paramIndex = validateParams(argv[1]);
-
-    if( validateParams(argv[1]) == -1 ){
-        displayHelp();
-        return -1;
-    }
-
-    #ifdef DISABLE_DEBUG
-    *stdout = *fopen("/dev/null","w");
-    #endif
-
-    switch(paramIndex) {
-        case 0 :
-               getTrmConnectedDeviceId( &listConnectedDevices, &count );
-               *stdout=fp_old;  // restore stdout
-               printf("%d\r\n", count);
-               if ( NULL != listConnectedDevices )
-                   free(listConnectedDevices);
-               break ;
-        case 1 :
-               getTrmReservedTuners( &tunerReservationList, &count );
-               *stdout=fp_old;  // restore stdout
-               printf("%d\r\n", count);
-               if ( NULL != tunerReservationList )
-                   free(tunerReservationList);
-               break ;
-        case 2 :
-               getTrmConnectedDeviceId( &listConnectedDevices, &count );
-               *stdout=fp_old;  // restore stdout
-               printList( &listConnectedDevices, count);
-               break;
-        case 3 :
-               getTrmReservedTuners( &tunerReservationList, &count );
-               *stdout=fp_old;  // restore stdout
-               printList( &tunerReservationList, count);
-               break; 
-        case 4 :
-               getTrmConnectionErrors( &connectionErrorList, &count );
-               *stdout=fp_old;  // restore stdout
-               printList( &connectionErrorList, count);
-               break; 
-        case 5 :
-               getNumOfTrmErrors(&count );
-               *stdout=fp_old;  // restore stdout
-               printf("%d\r\n", count);
-               break; 
-        case 6 :
-               getNumOfTuners(&count);
-               *stdout=fp_old;  // restore stdout
-               printf("%d\r\n", count);
-               break; 
-        default :
-               displayHelp();
-               break;
-
-    }
-   return 0;
-}
-
 static int getDiagParameter(TRMMessageType_t type)
 {
     TRMDiagInfo_t infoParam;
     memset(&infoParam, 0, sizeof(infoParam));
     int status = TRM_DIAG_FAILURE ;
-
+    iarmBusInit();
     infoParam.retCode = TRMMgr_ERR_UNKNOWN;
     infoParam.bufLen  = 0;
     infoParam.msgType = type;    
@@ -396,9 +297,7 @@ static void processBuffer( const char* buf, int len)
  */
 int getTrmConnectedDeviceId( char*** ptrConnectedDeviceList, int* ptrLength ) {
     int status = 0 ;
-    iarmBusInit();
     status = getDiagParameter( TRMMgr_MSG_TYPE_GET_CONN_DEVICE_IDS );
-    iarmBusDisconnect();
     *ptrLength = numberOfConnectedDevices ; 
     if (  NULL != connectedDeviceIds && status == 0 ) { 
         *ptrConnectedDeviceList = connectedDeviceIds ;
@@ -411,9 +310,7 @@ int getTrmConnectedDeviceId( char*** ptrConnectedDeviceList, int* ptrLength ) {
  */
 int getTrmReservedTuners( char*** ptrReservedTunerList, int* ptrLength ) {
     int status = 0 ;
-    iarmBusInit();
     status = getDiagParameter( TRMMgr_MSG_TYPE_GET_TUNER_RESERVATION );
-    iarmBusDisconnect();
     *ptrLength = numberOfReservedTuners; 
     if (  NULL != tunerReservationList ) { 
         *ptrReservedTunerList = tunerReservationList ;
@@ -424,9 +321,7 @@ int getTrmReservedTuners( char*** ptrReservedTunerList, int* ptrLength ) {
 
 int getNumOfTrmErrors(int* errCount){
     int status = 0 ;
-    iarmBusInit();
     status = getDiagParameter( TRMMgr_MSG_TYPE_GET_NUM_TRM_ERRORS );
-    iarmBusDisconnect();
     *errCount = numberOfTRMErrors;
     numberOfTRMErrors = 0; 
    return status ;
@@ -435,9 +330,7 @@ int getNumOfTrmErrors(int* errCount){
 
 int getTrmConnectionErrors( char*** ptrConnectionErrorList, int* ptrLength ) {
     int status = 0 ;
-    iarmBusInit();
     status = getDiagParameter( TRMMgr_MSG_TYPE_GET_CONNECTION_ERRORS );
-    iarmBusDisconnect();
     *ptrLength = numberOfConnectionErrors; 
     if (  NULL != connectionErrorList ) { 
         *ptrConnectionErrorList = connectionErrorList ;
@@ -448,39 +341,9 @@ int getTrmConnectionErrors( char*** ptrConnectionErrorList, int* ptrLength ) {
 
 int getNumOfTuners(int* tunerCount){
     int status = 0 ;
-    iarmBusInit();
     status = getDiagParameter( TRMMgr_MSG_TYPE_GET_NUM_IN_BAND_TUNERS );
-    iarmBusDisconnect();
     *tunerCount = numberOfTuners;
     numberOfTuners = 0; 
     return status ;
 }
 
-void printList(char*** ptrList, int length ) {
-    int loop = 0 ;
-    char **list = *ptrList ;
-    #ifndef DISABLE_DEBUG
-    printf("################ printList count %d \n", length);
-    #endif
-    if ( list != NULL ) {
-        if( length != 0 ) {
-            for ( loop = 0 ; loop < length; loop++ ) {
-	        if( NULL != list[loop] ) {
-                    if ( loop == 0 ) {
- 	                printf("%s", list[loop]);
-	            } else {
-	                printf(", %s", list[loop]);
-	            }
-	        }  
-           }
-       } else {
-           printf("Empty");
-       }
-       printf("\r\n");
-       if ( NULL != list )
-           free(list);
-   } else {
-       printf("Empty\r\n");
-   }
-   return;
-}

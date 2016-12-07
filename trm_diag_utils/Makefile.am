@@ -19,11 +19,14 @@
 SUBDIRS = 
 DIST_SUBDIRS = 
 
-bin_PROGRAMS = QueryTRMInfo
+lib_LTLIBRARIES = libtrmdiaginfo.la
+include_HEADERS = trmDiagInfo.h
 
-QueryTRMInfo_LDADD = -lds -ldshalcli  -lIARMBus -ldbus-1 -lglib-2.0 \
+libtrmdiaginfo_la_LIBADD = -lds -ldshalcli  -lIARMBus -ldbus-1 -lglib-2.0 \
                      -ldirect -lfusion -ldirectfb -lpthread \
                      -ltrm -ljansson -luuid
-QueryTRMInfo_SOURCES=trmDiagInfo.cpp
+libtrmdiaginfo_la_SOURCES=trmDiagInfo.cpp
+
+libtrmdiaginfo_la_includedir = $(includedir)
 
 

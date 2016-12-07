@@ -17,58 +17,57 @@
 # limitations under the License.
 ##########################################################################
 RM          := rm -rf 
-INSTALL_DIR := $(COMBINED_ROOT)/trm/install/bin/
 CPPFLAGS    := -g -fPIC -D_REENTRANT -Wall 
 OBJS        := $(patsubst %.cpp,%.o,$(wildcard *.cpp))
 IARM        := $(RDK_PROJECT_ROOT_PATH)/iarmbus
 IARM_MGR    := $(RDK_PROJECT_ROOT_PATH)/iarmmgrs
 TRM         := $(RDK_PROJECT_ROOT_PATH)/trm
-EXECUTABLE  := QueryTRMInfo
+INSTALL     := $(FSROOT)/usr
+LIBNAME     := trmdiaginfo
+LIBNAMEFULL := lib$(LIBNAME).so
 CC      := $(CROSS_COMPILE)-gcc
 CXX     := $(CROSS_COMPILE)-g++
 
 INCLUDE = -I.\
-	 -I$(COMBINED_ROOT)/trm/common/include \
-	 -I$(COMBINED_ROOT)/trm/diag/include \
-	 -I$(COMBINED_ROOT)/iarmbus/core/include \
-	 -I$(JANSSON_DIR)/src \
-	 -I$(OPENSRC)/include/ \
-         -I$(IARM)/core/include\
-         -I$(IARM_MGR)/generic/power/include\
-         -I$(IARM_MGR)/generic/hal/include\
-         -I$(TRM)/diag/include\
-         -I$(TRM)/common/include\
-	 -I$(OPENSRC)/include/uuid/
-	
+	  -I$(COMBINED_ROOT)/trm/common/include \
+	  -I$(COMBINED_ROOT)/trm/diag/include \
+	  -I$(COMBINED_ROOT)/iarmbus/core/include \
+	  -I$(JANSSON_DIR)/src \
+	  -I$(OPENSRC)/include/ \
+	  -I$(IARM)/core/include\
+	  -I$(IARM_MGR)/generic/power/include\
+	  -I$(IARM_MGR)/generic/hal/include\
+	  -I$(TRM)/diag/include\
+	  -I$(TRM)/common/include\
+	  -I$(OPENSRC)/include/uuid/
 
 CPPFLAGS      += $(INCLUDE)
 
-LDFLAGS +=  -ltrm -lpthread -ljansson -luuid -lIARMBus
-LDFLAGS +=  -L$(RDK_FSROOT_PATH)/usr/local/lib -L$(IARM)/install -L$(TRM)/install/lib
-LDFLAGS += 	-L$(OPENSRC)/lib
-LDFLAGS +=	-Wl,-rpath,$(OPENSRC)/lib
-LDFLAGS +=	-Wl,-rpath,$(RDK_FSROOT_PATH)/usr/local/lib
-
-all: clean executable 
+all: install
 	@echo "Build Finished...."
 
-executable: $(OBJS)
-	@echo "Building $(EXECUTABLE) ...."
-	$(CXX) $(CPPFLAGS) $(LDFLAGS) $(OBJS) -o $(EXECUTABLE)
+library: $(OBJS)
+	@echo "Building $(LIBNAMEFULL) ...."
+	$(CXX) $(OBJS) $(CPPFLAGS) -shared -o $(LIBNAMEFULL)
 
-%.o:%.cpp
-	@echo "Building Source $@ ...."
+%.o: %.cpp
+	@echo "Building $@ ...."
 	$(CXX) -c $<  $(CPPFLAGS) -o $@
 
-clean:
-	@echo "Cleaning the directory..."
-	@$(RM) $(OBJS) $(EXECUTABLE)
+%.o: %.c
+	@echo "Building $@ ...."
+	$(CXX) -c $<  $(CPPFLAGS) -o $@
 
-install: all
-	@echo "Copying trm utility to $(FSROOT)/usr/bin ..."
-	@cp -f $(EXECUTABLE) $(FSROOT)/usr/bin
+install: library
+	@echo "installling...!"
+	@cp -f trmDiagInfo.h $(INSTALL)/include
+	@cp -f $(LIBNAMEFULL) $(INSTALL)/lib
 
 uninstall:
-	@echo "Remove trm  utility from $(FSROOT)/usr/bin..."
-	@rm -f $(FSROOT)/usr/bin/$(EXECUTABLE)
+	@$(RM) $(INSTALL)/lib/$(LIBNAMEFULL)
+	@$(RM) $(INSTALL)/include/trmDiagInfo.h
+
+clean: uninstall
+	@echo "Cleaning the directory..."
+	@$(RM) $(OBJS) $(LIBNAMEFULL)
 

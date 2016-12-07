@@ -18,10 +18,19 @@
 */
 #ifndef __trm_sys_utils
 #define __trm_sys_utils
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int getTrmConnectedDeviceId( char ***ptrConnectedDeviceList, int* );
 int getTrmReservedTuners( char*** ptrReservedTunerList, int* );
 int getTrmConnectionErrors( char*** ptrConnectionErrorList, int* ptrLength );
 int getNumOfTrmErrors(int* errCount);
 int getNumOfTuners(int* tunerCount);
-void printList(char*** list, int length );
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
